@@ -72,8 +72,8 @@ char CardReader::filename[FILENAME_LENGTH], CardReader::longFilename[LONG_FILENA
 
 IF_DISABLED(NO_SD_AUTOSTART, uint8_t CardReader::autofile_index); // = 0
 
-#if ENABLED(BINARY_FILE_TRANSFER)
-  serial_index_t IF_DISABLED(HAS_MULTI_SERIAL, constexpr) CardReader::transfer_port_index;
+#if BOTH(HAS_MULTI_SERIAL, BINARY_FILE_TRANSFER)
+  serial_index_t CardReader::transfer_port_index;
 #endif
 
 // private:
@@ -350,7 +350,7 @@ void CardReader::printListing(
       #if ENABLED(LONG_FILENAME_HOST_SUPPORT)
         if (!includeLongNames)
       #endif
-
+          SERIAL_ECHOLN(p.fileSize);
       #if ENABLED(LONG_FILENAME_HOST_SUPPORT)
         else {
           SERIAL_ECHO(p.fileSize);
@@ -384,7 +384,7 @@ void CardReader::ls(TERN_(LONG_FILENAME_HOST_SUPPORT, bool includeLongNames/*=fa
   //
   void CardReader::printLongPath(char * const path) {
 
-    int i, pathLen = path ? strlen(path) : 0;
+    int i, pathLen = strlen(path);
 
     // SERIAL_ECHOPGM("Full Path: "); SERIAL_ECHOLN(path);
 
@@ -422,7 +422,7 @@ void CardReader::ls(TERN_(LONG_FILENAME_HOST_SUPPORT, bool includeLongNames/*=fa
       // Open the sub-item as the new dive parent
       SdFile dir;
       if (!dir.open(&diveDir, segment, O_READ)) {
-        //SERIAL_EOL();
+        SERIAL_EOL();
         SERIAL_ECHO_START();
         SERIAL_ECHOPGM(STR_SD_CANT_OPEN_SUBDIR, segment);
         break;
@@ -433,7 +433,7 @@ void CardReader::ls(TERN_(LONG_FILENAME_HOST_SUPPORT, bool includeLongNames/*=fa
 
     } // while i<pathLen
 
-   //SERIAL_EOL();
+    SERIAL_EOL();
   }
 
 #endif // LONG_FILENAME_HOST_SUPPORT
@@ -446,7 +446,7 @@ void CardReader::printSelectedFilename() {
   if (file.isOpen()) {
     char dosFilename[FILENAME_LENGTH];
     file.getDosName(dosFilename);
-
+    SERIAL_ECHO(dosFilename);
     SERIAL_ECHOPGM("\xFF\xFF\xFF");
 
     SERIAL_ECHOPGM("t5.txt=\"");
@@ -467,9 +467,10 @@ void CardReader::printSelectedFilename() {
     SERIAL_ECHOPGM("\xFF\xFF\xFF");
     SERIAL_ECHOPGM("t5.txt=\"No file\"");
     SERIAL_ECHOPGM("\xFF\xFF\xFF");
+    SERIAL_ECHOPGM("(no file)");
   }
 
-  //SERIAL_EOL();
+  SERIAL_EOL();
 }
 
 void CardReader::mount() {
@@ -489,12 +490,11 @@ void CardReader::mount() {
     flag.mounted = true;
     SERIAL_ECHO_MSG(STR_SD_CARD_OK);
   }
-
   if (flag.mounted)
     cdroot();
   #if ENABLED(USB_FLASH_DRIVE_SUPPORT) || PIN_EXISTS(SD_DETECT)
     else if (marlin_state != MF_INITIALIZING)
-      ui.set_status(GET_TEXT_F(MSG_MEDIA_INIT_FAIL), -1);
+      ui.set_status_P(GET_TEXT(MSG_SD_INIT_FAIL), -1);
   #endif
 
   ui.refresh();
@@ -651,7 +651,7 @@ void announceOpen(const uint8_t doing, const char * const path) {
     PORT_REDIRECT(SerialMask::All);
     SERIAL_ECHO_START();
     SERIAL_ECHOPGM("Now ");
-    SERIAL_ECHOF(doing == 1 ? F("doing") : F("fresh"));
+    SERIAL_ECHOPGM_P(doing == 1 ? PSTR("doing") : PSTR("fresh"));
     SERIAL_ECHOLNPGM(" file: ", path);
   }
 }
